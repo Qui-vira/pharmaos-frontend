@@ -4,6 +4,13 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'PharmaOS AI — Dashboard',
   description: 'AI-powered pharmacy management platform',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

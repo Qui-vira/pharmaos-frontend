@@ -185,7 +185,7 @@ export const orgApi = {
   createUser: (data: any) =>
     request<User>('/orgs/me/users', { method: 'POST', body: JSON.stringify(data) }),
   getPublicInfo: (orgId: string) =>
-    request<{ id: string; name: string; city: string | null; state: string | null; phone: string | null }>(
+    request<{ id: string; name: string; city: string | null; state: string | null; phone: string | null; whatsapp_number: string | null }>(
       `/orgs/${orgId}/public`
     ),
 };
@@ -314,7 +314,7 @@ export const patientsApi = {
     date_of_birth?: string; gender?: string;
     allergies?: string[]; chronic_conditions?: string[];
     consent_given: boolean;
-  }) => request<{ message: string; patient_id: string }>(
+  }) => request<{ message: string; patient_id: string; whatsapp_number?: string }>(
     '/patients/self-register', { method: 'POST', body: JSON.stringify(data) }
   ),
 };

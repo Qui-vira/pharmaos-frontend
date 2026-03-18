@@ -11,6 +11,7 @@ interface PharmacyInfo {
   city: string | null;
   state: string | null;
   phone: string | null;
+  whatsapp_number: string | null;
 }
 
 export default function PatientSelfRegisterPage() {
@@ -40,6 +41,7 @@ function PatientSelfRegisterInner() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pharmacyId) {
@@ -60,7 +62,7 @@ function PatientSelfRegisterInner() {
     setSubmitting(true);
     setError('');
     try {
-      await patientsApi.selfRegister({
+      const result = await patientsApi.selfRegister({
         org_id: pharmacyId,
         full_name: fullName.trim(),
         phone: phone.trim(),
@@ -70,6 +72,7 @@ function PatientSelfRegisterInner() {
         chronic_conditions: conditions ? conditions.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
         consent_given: true,
       });
+      setWhatsappNumber(result.whatsapp_number || pharmacy?.whatsapp_number || null);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -97,8 +100,8 @@ function PatientSelfRegisterInner() {
   }
 
   if (success) {
-    const whatsappNumber = pharmacy?.phone?.replace(/[^0-9]/g, '') || '';
-    const waLink = whatsappNumber ? `https://wa.me/${whatsappNumber}` : '';
+    const waNumber = whatsappNumber?.replace(/[^0-9]/g, '') || '';
+    const waLink = waNumber ? `https://wa.me/${waNumber}` : '';
 
     return (
       <div className="text-center py-8">
@@ -110,23 +113,21 @@ function PatientSelfRegisterInner() {
           You&apos;ve been registered at <span className="font-semibold text-surface-700">{pharmacy?.name}</span>.
         </p>
 
-        {pharmacy?.phone && (
+        {waNumber && (
           <div className="card p-5 text-left mb-4">
             <p className="text-sm text-surface-500 mb-2">
               Save this number to message your pharmacist on WhatsApp:
             </p>
-            <p className="text-lg font-bold text-surface-900 mb-3">{pharmacy.phone}</p>
-            {waLink && (
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary w-full text-sm"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat on WhatsApp
-              </a>
-            )}
+            <p className="text-lg font-bold text-surface-900 mb-3">+{waNumber}</p>
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary w-full text-sm"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Chat on WhatsApp
+            </a>
           </div>
         )}
 

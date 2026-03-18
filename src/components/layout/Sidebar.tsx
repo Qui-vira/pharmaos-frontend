@@ -96,7 +96,7 @@ export default function Sidebar() {
                   <>
                     <span>{item.label}</span>
                     {item.badge && (
-                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wide bg-brand-100 text-brand-600 px-1.5 py-0.5 rounded-md">{item.badge as string}</span>
+                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wide bg-brand-100 text-brand-600 px-1.5 py-0.5 rounded-md">{String(item.badge)}</span>
                     )}
                   </>
                 )}

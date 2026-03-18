@@ -36,6 +36,7 @@ export default function DistributorOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
 
   const loadOrders = useCallback(async (p: number, status: string) => {
@@ -69,13 +70,14 @@ export default function DistributorOrdersPage() {
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     setUpdatingStatus(newStatus);
+    setStatusError(null);
     try {
       const updated = await ordersApi.updateStatus(orderId, newStatus);
       setSelectedOrder(updated);
       loadOrders(page, statusFilter);
       loadPendingCount();
     } catch (err: any) {
-      alert(err.message || 'Failed to update order status');
+      setStatusError(err.message || 'Failed to update order status');
     } finally {
       setUpdatingStatus(null);
     }
@@ -160,7 +162,7 @@ export default function DistributorOrdersPage() {
         </div>
       </div>
 
-      <Modal open={!!selectedOrder} onClose={() => setSelectedOrder(null)} title={`Order ${selectedOrder?.order_number || ''}`}>
+      <Modal open={!!selectedOrder} onClose={() => { setSelectedOrder(null); setStatusError(null); }} title={`Order ${selectedOrder?.order_number || ''}`}>
         {selectedOrder && (
           <div className="space-y-5">
             <div className="flex items-center justify-between">
@@ -193,6 +195,12 @@ export default function DistributorOrdersPage() {
                 <span>{formatCurrency(selectedOrder.total_amount)}</span>
               </div>
             </div>
+
+            {statusError && (
+              <div className="bg-danger-500/5 border border-danger-500/20 rounded-xl p-3">
+                <p className="text-sm text-danger-600 font-semibold">{statusError}</p>
+              </div>
+            )}
 
             {actionButtons[selectedOrder.status] && (
               <div className="flex gap-3 pt-2">

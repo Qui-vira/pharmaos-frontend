@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Package, AlertTriangle, TrendingUp, BarChart3,
   ShoppingCart, Store, MessageSquare, Bell, Settings, LogOut,
   ChevronLeft, Pill, Menu, Users, ClipboardList, ShoppingBag,
-  Video, Camera,
+  Video, Camera, QrCode,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authApi, getStoredUser } from '@/lib/api';
@@ -26,6 +26,7 @@ const pharmacyNav: NavItem[] = [
   { href: '/suppliers', label: 'Supplier Catalog', icon: Store },
   { href: '/consultations', label: 'Consultations', icon: MessageSquare },
   { href: '/reminders', label: 'Reminders', icon: Bell },
+  { href: '/share', label: 'Patient QR', icon: QrCode },
   { href: '/telepharmacy', label: 'Telepharmacy', icon: Video, badge: 'Soon' },
   { href: '/snap-to-stock', label: 'Snap to Stock', icon: Camera, badge: 'Soon' },
 ];

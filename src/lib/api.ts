@@ -184,6 +184,10 @@ export const orgApi = {
   listUsers: () => request<User[]>('/orgs/me/users'),
   createUser: (data: any) =>
     request<User>('/orgs/me/users', { method: 'POST', body: JSON.stringify(data) }),
+  getPublicInfo: (orgId: string) =>
+    request<{ id: string; name: string; city: string | null; state: string | null; phone: string | null }>(
+      `/orgs/${orgId}/public`
+    ),
 };
 
 // ─── Products (GLOBAL catalog, no org_id) ──────────────────────────────────
@@ -305,6 +309,14 @@ export const patientsApi = {
   get: (id: string) => request<Patient>(`/patients/${id}`),
   create: (data: any) => request<Patient>('/patients', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: any) => request<Patient>(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  selfRegister: (data: {
+    org_id: string; full_name: string; phone: string;
+    date_of_birth?: string; gender?: string;
+    allergies?: string[]; chronic_conditions?: string[];
+    consent_given: boolean;
+  }) => request<{ message: string; patient_id: string }>(
+    '/patients/self-register', { method: 'POST', body: JSON.stringify(data) }
+  ),
 };
 
 // ─── Reminders ─────────────────────────────────────────────────────────────

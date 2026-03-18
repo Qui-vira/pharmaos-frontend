@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/layout/Header';
 import { StatusBadge, Modal, LoadingSpinner } from '@/components/ui';
-import { MessageSquare, User, Bot, Stethoscope, CheckCircle, Clock, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { MessageSquare, User, Bot, Stethoscope, CheckCircle, Clock, AlertCircle, Plus, Trash2, Send, Loader2 } from 'lucide-react';
 import { formatRelativeTime, cn } from '@/lib/utils';
-import { consultationsApi } from '@/lib/api';
-import type { Consultation, PaginatedResponse } from '@/types';
+import { consultationsApi, patientsApi } from '@/lib/api';
+import type { Consultation, Patient, PaginatedResponse } from '@/types';
 
 interface DrugPlanItem {
   drug_name: string;
@@ -29,6 +29,15 @@ export default function ConsultationsPage() {
   const [selected, setSelected] = useState<Consultation | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  // Patient name cache
+  const [patientNames, setPatientNames] = useState<Record<string, string>>({});
+
+  // Reply state
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Modal state
   const [showActionModal, setShowActionModal] = useState(false);
@@ -59,20 +68,45 @@ export default function ConsultationsPage() {
     fetchList();
   }, [fetchList]);
 
+  // Fetch patient names for consultations
+  useEffect(() => {
+    const missingIds = consultations
+      .map((c) => c.patient_id)
+      .filter((id) => id && !patientNames[id]);
+    const uniqueIds = Array.from(new Set(missingIds));
+
+    uniqueIds.forEach(async (id) => {
+      try {
+        const patient = await patientsApi.get(id);
+        setPatientNames((prev) => ({ ...prev, [id]: patient.full_name }));
+      } catch {
+        setPatientNames((prev) => ({ ...prev, [id]: `Patient #${id.slice(0, 8)}` }));
+      }
+    });
+  }, [consultations, patientNames]);
+
   // Fetch single consultation detail
   const fetchDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
     setDetailError(null);
+    setSendError(null);
     try {
       const data = await consultationsApi.get(id);
       setSelected(data);
+      // Fetch patient name if not cached
+      if (data.patient_id && !patientNames[data.patient_id]) {
+        try {
+          const patient = await patientsApi.get(data.patient_id);
+          setPatientNames((prev) => ({ ...prev, [data.patient_id]: patient.full_name }));
+        } catch { /* use fallback */ }
+      }
     } catch (err: any) {
       setDetailError(err.message || 'Failed to load consultation');
       setSelected(null);
     } finally {
       setDetailLoading(false);
     }
-  }, []);
+  }, [patientNames]);
 
   useEffect(() => {
     if (selectedId) {
@@ -88,6 +122,36 @@ export default function ConsultationsPage() {
       setSelectedId(consultations[0].id);
     }
   }, [consultations, selectedId]);
+
+  // Scroll to bottom of messages when they change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selected?.messages]);
+
+  // Send pharmacist reply
+  const handleSendReply = async () => {
+    if (!selectedId || !replyText.trim()) return;
+
+    setSending(true);
+    setSendError(null);
+    try {
+      const updated = await consultationsApi.sendMessage(selectedId, replyText.trim());
+      setSelected(updated);
+      setReplyText('');
+      await fetchList();
+    } catch (err: any) {
+      setSendError(err.message || 'Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleReplyKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendReply();
+    }
+  };
 
   // Drug plan helpers
   const addDrugRow = () => {
@@ -181,6 +245,12 @@ export default function ConsultationsPage() {
     pharmacist: 'bg-brand-100',
   };
 
+  const senderLabels: Record<string, string> = {
+    customer: 'Patient',
+    ai: 'AI Assistant',
+    pharmacist: 'Pharmacist',
+  };
+
   const statusOptions = [
     { value: '', label: 'All Statuses' },
     { value: 'intake', label: 'Intake' },
@@ -191,6 +261,10 @@ export default function ConsultationsPage() {
     { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
   ];
+
+  const getPatientName = (patientId: string) => patientNames[patientId] || `Patient #${patientId.slice(0, 8)}`;
+
+  const isConsultationOpen = selected && !['completed', 'cancelled'].includes(selected.status);
 
   return (
     <>
@@ -242,7 +316,7 @@ export default function ConsultationsPage() {
                     )}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-semibold text-surface-800">#{c.id.slice(0, 8)}</span>
+                      <span className="text-sm font-semibold text-surface-800">{getPatientName(c.patient_id)}</span>
                       <StatusBadge status={c.status} />
                     </div>
                     <p className="text-xs text-surface-400 line-clamp-1">{c.symptom_summary || 'Intake in progress...'}</p>
@@ -289,15 +363,31 @@ export default function ConsultationsPage() {
             <div className="flex-1 flex flex-col">
               {/* Header */}
               <div className="px-5 py-3 border-b border-surface-200 flex items-center justify-between bg-surface-50">
-                <div>
-                  <h3 className="font-bold text-surface-900">Consultation #{selected.id.slice(0, 8)}</h3>
-                  <p className="text-xs text-surface-400">Patient: {selected.patient_id} &middot; Channel: {selected.channel}</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-brand-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-brand-700">
+                      {getPatientName(selected.patient_id).charAt(0)}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-surface-900">{getPatientName(selected.patient_id)}</h3>
+                    <p className="text-xs text-surface-400">#{selected.id.slice(0, 8)} &middot; {selected.channel}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={selected.status} />
-                  {(selected.status === 'pending_review' || selected.status === 'pharmacist_reviewing') && (
+                  {(selected.status === 'pending_review' || selected.status === 'pharmacist_reviewing') && !selected.pharmacist_action && (
                     <button onClick={handleOpenModal} className="btn-primary text-xs">
-                      <Stethoscope className="w-3.5 h-3.5" /> Take Action
+                      <Stethoscope className="w-3.5 h-3.5" /> Pharmacist Action
+                    </button>
+                  )}
+                  {selected.status === 'pharmacist_reviewing' && selected.pharmacist_action && !selected.pharmacist_action.is_approved && (
+                    <button onClick={handleApprove} disabled={approving} className="btn-primary text-xs">
+                      {approving ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Approving...</>
+                      ) : (
+                        <><CheckCircle className="w-3.5 h-3.5" /> Approve</>
+                      )}
                     </button>
                   )}
                 </div>
@@ -314,23 +404,27 @@ export default function ConsultationsPage() {
               {/* Pharmacist Action Display */}
               {selected.pharmacist_action && (
                 <div className="px-5 py-3 bg-brand-50/50 border-b border-brand-100">
-                  <p className="text-xs font-semibold text-brand-700 mb-1">Pharmacist Action</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-semibold text-brand-700">Pharmacist Action</p>
+                    {selected.pharmacist_action.is_approved ? (
+                      <span className="badge bg-brand-100 text-brand-700">Approved</span>
+                    ) : (
+                      <span className="badge bg-warning-500/10 text-warning-600">Pending Approval</span>
+                    )}
+                  </div>
                   <p className="text-sm text-surface-700 mb-1"><strong>Diagnosis:</strong> {selected.pharmacist_action.diagnosis}</p>
                   {selected.pharmacist_action.drug_plan && selected.pharmacist_action.drug_plan.length > 0 && (
                     <div className="text-sm text-surface-700 mb-1">
                       <strong>Drug Plan:</strong>
                       <ul className="ml-4 mt-1 list-disc">
                         {selected.pharmacist_action.drug_plan.map((drug: any, i: number) => (
-                          <li key={i}>{drug.drug_name} - {drug.dosage} ({drug.instructions})</li>
+                          <li key={i}>{drug.drug_name || drug.product_name} - {drug.dosage} ({drug.instructions})</li>
                         ))}
                       </ul>
                     </div>
                   )}
                   <p className="text-sm text-surface-700">
                     <strong>Total:</strong> {'\u20A6'}{selected.pharmacist_action.total_price?.toLocaleString()}
-                    {selected.pharmacist_action.is_approved && (
-                      <span className="ml-2 text-xs text-brand-600 font-semibold">Approved</span>
-                    )}
                   </p>
                   {selected.pharmacist_action.notes && (
                     <p className="text-sm text-surface-500 mt-1"><em>{selected.pharmacist_action.notes}</em></p>
@@ -358,9 +452,16 @@ export default function ConsultationsPage() {
                         </div>
                         <div className={cn(
                           'max-w-[70%] rounded-2xl px-4 py-2.5',
-                          isCustomer ? 'bg-surface-100 rounded-tl-sm' : 'bg-brand-50 rounded-tr-sm',
+                          isCustomer
+                            ? 'bg-surface-100 rounded-tl-sm'
+                            : msg.sender_type === 'pharmacist'
+                              ? 'bg-brand-100 rounded-tr-sm'
+                              : 'bg-info-500/5 rounded-tr-sm',
                         )}>
-                          <p className="text-sm text-surface-800">{msg.message}</p>
+                          <p className="text-[10px] font-semibold text-surface-400 mb-0.5">
+                            {senderLabels[msg.sender_type] || msg.sender_type}
+                          </p>
+                          <p className="text-sm text-surface-800 whitespace-pre-wrap">{msg.message}</p>
                           <p className="text-[10px] text-surface-400 mt-1">{formatRelativeTime(msg.sent_at)}</p>
                         </div>
                       </div>
@@ -371,46 +472,52 @@ export default function ConsultationsPage() {
                     <p className="text-sm">No messages yet</p>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
-              {/* Status bar */}
-              <div className="px-5 py-3 border-t border-surface-200 bg-surface-50 flex items-center justify-center gap-2">
-                {selected.status === 'intake' && (
-                  <p className="text-sm text-surface-400 flex items-center gap-2">
-                    <Bot className="w-4 h-4 animate-pulse-subtle" /> AI is gathering patient information...
-                  </p>
-                )}
-                {selected.status === 'ai_processing' && (
-                  <p className="text-sm text-info-600 flex items-center gap-2">
-                    <Bot className="w-4 h-4 animate-pulse-subtle" /> AI is processing symptoms...
-                  </p>
-                )}
-                {selected.status === 'pending_review' && (
-                  <p className="text-sm text-warning-600 flex items-center gap-2">
-                    <Clock className="w-4 h-4" /> Waiting for pharmacist review
-                  </p>
-                )}
-                {selected.status === 'pharmacist_reviewing' && (
-                  <p className="text-sm text-info-600 flex items-center gap-2">
-                    <Stethoscope className="w-4 h-4" /> Pharmacist is reviewing...
-                  </p>
-                )}
-                {selected.status === 'approved' && (
-                  <p className="text-sm text-brand-600 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" /> Action approved, awaiting completion
-                  </p>
-                )}
-                {selected.status === 'completed' && (
-                  <p className="text-sm text-brand-600 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" /> Consultation completed
-                  </p>
-                )}
-                {selected.status === 'cancelled' && (
-                  <p className="text-sm text-danger-500 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" /> Consultation cancelled
-                  </p>
-                )}
-              </div>
+              {/* Reply input or status bar */}
+              {isConsultationOpen ? (
+                <div className="px-4 py-3 border-t border-surface-200 bg-white">
+                  {sendError && (
+                    <p className="text-xs text-danger-500 mb-2">{sendError}</p>
+                  )}
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      className="input flex-1 resize-none text-sm"
+                      rows={1}
+                      placeholder="Type a message to the patient..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={handleReplyKeyDown}
+                      disabled={sending}
+                    />
+                    <button
+                      onClick={handleSendReply}
+                      disabled={sending || !replyText.trim()}
+                      className="btn-primary text-sm px-3 py-2.5 flex-shrink-0"
+                    >
+                      {sending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-5 py-3 border-t border-surface-200 bg-surface-50 flex items-center justify-center gap-2">
+                  {selected.status === 'completed' && (
+                    <p className="text-sm text-brand-600 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Consultation completed
+                    </p>
+                  )}
+                  {selected.status === 'cancelled' && (
+                    <p className="text-sm text-danger-500 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" /> Consultation cancelled
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-surface-400">
@@ -515,24 +622,17 @@ export default function ConsultationsPage() {
 
           <div className="flex justify-end gap-3 pt-2">
             <button
-              onClick={handleSubmitAction}
-              disabled={submitting || !diagnosis.trim()}
+              onClick={() => setShowActionModal(false)}
               className="btn-secondary text-sm"
             >
-              {submitting ? 'Saving...' : 'Save Action'}
+              Cancel
             </button>
             <button
-              onClick={handleApprove}
-              disabled={approving || !diagnosis.trim()}
+              onClick={handleSubmitAction}
+              disabled={submitting || !diagnosis.trim()}
               className="btn-primary text-sm"
             >
-              {approving ? (
-                'Approving...'
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" /> Approve & Send to Patient
-                </>
-              )}
+              {submitting ? 'Saving...' : (<><Stethoscope className="w-4 h-4" /> Save Action</>)}
             </button>
           </div>
         </div>

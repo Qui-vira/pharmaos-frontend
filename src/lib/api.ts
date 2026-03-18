@@ -345,6 +345,8 @@ export const consultationsApi = {
     return request<PaginatedResponse<Consultation>>(url);
   },
   get: (id: string) => request<Consultation>(`/consultations/${id}`),
+  sendMessage: (id: string, message: string) =>
+    request<Consultation>(`/consultations/${id}/messages`, { method: 'POST', body: JSON.stringify({ message }) }),
   submitAction: (id: string, data: { diagnosis: string; drug_plan: any[]; total_price: number; notes?: string }) =>
     request<any>(`/consultations/${id}/action`, { method: 'POST', body: JSON.stringify(data) }),
   approve: (id: string) =>

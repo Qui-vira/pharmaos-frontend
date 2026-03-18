@@ -1,48 +1,123 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/layout/Header';
-import { StatCard, DataTable, StatusBadge, Modal } from '@/components/ui';
-import { Bell, Send, Clock, CheckCircle, Plus, MessageCircle } from 'lucide-react';
+import { StatCard, DataTable, StatusBadge, Pagination, Modal, LoadingSpinner } from '@/components/ui';
+import { Bell, Send, Clock, CheckCircle, Plus } from 'lucide-react';
 import { formatDateTime, cn } from '@/lib/utils';
-
-const mockReminders = [
-  { id: '1', patient: 'John Okafor', phone: '+2348012345678', type: 'refill', product: 'Amlodipine 5mg', scheduled_at: new Date(Date.now() + 3600000).toISOString(), status: 'pending', response: null },
-  { id: '2', patient: 'Mary Adebayo', phone: '+2348098765432', type: 'adherence', product: 'Metformin 500mg', scheduled_at: new Date(Date.now() - 1800000).toISOString(), status: 'sent', response: null },
-  { id: '3', patient: 'Chioma Adeyemi', phone: '+2348033445566', type: 'follow_up', product: null, scheduled_at: new Date(Date.now() - 86400000).toISOString(), status: 'delivered', response: null },
-  { id: '4', patient: 'Emeka Okonkwo', phone: '+2348055667788', type: 'refill', product: 'Omeprazole 20mg', scheduled_at: new Date(Date.now() - 172800000).toISOString(), status: 'responded', response: 'PICKUP' },
-  { id: '5', patient: 'Fatima Bello', phone: '+2347099887766', type: 'pickup', product: null, scheduled_at: new Date(Date.now() - 259200000).toISOString(), status: 'failed', response: null },
-];
+import { remindersApi, patientsApi } from '@/lib/api';
+import type { Reminder, Patient, PaginatedResponse } from '@/types';
 
 const typeIcons: Record<string, string> = {
-  refill: '💊',
-  adherence: '⏰',
-  follow_up: '📋',
-  pickup: '🏪',
+  refill: '\u{1F48A}',
+  adherence: '\u23F0',
+  follow_up: '\u{1F4CB}',
+  pickup: '\u{1F3EA}',
 };
 
 export default function RemindersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [reminders, setReminders] = useState<PaginatedResponse<Reminder> | null>(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [sentCount, setSentCount] = useState(0);
+  const [respondedCount, setRespondedCount] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    patient_id: '',
+    reminder_type: 'refill' as 'refill' | 'adherence' | 'follow_up' | 'pickup',
+    product_id: '',
+    scheduled_at: '',
+    recurrence_rule: '',
+    message_template: '',
+  });
 
-  const filtered = filter === 'all' ? mockReminders : mockReminders.filter(r => r.status === filter);
+  const fetchReminders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const statusParam = filter === 'all' ? undefined : filter;
+      const data = await remindersApi.list(page, statusParam);
+      setReminders(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load reminders');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, filter]);
 
-  const pendingCount = mockReminders.filter(r => r.status === 'pending').length;
-  const sentCount = mockReminders.filter(r => r.status === 'sent' || r.status === 'delivered').length;
-  const respondedCount = mockReminders.filter(r => r.status === 'responded').length;
+  const fetchStats = useCallback(async () => {
+    try {
+      const [pendingRes, sentRes, deliveredRes, respondedRes] = await Promise.all([
+        remindersApi.list(1, 'pending'),
+        remindersApi.list(1, 'sent'),
+        remindersApi.list(1, 'delivered'),
+        remindersApi.list(1, 'responded'),
+      ]);
+      setPendingCount(pendingRes.total);
+      setSentCount(sentRes.total + deliveredRes.total);
+      setRespondedCount(respondedRes.total);
+    } catch { /* non-critical */ }
+  }, []);
+
+  const fetchPatients = useCallback(async () => {
+    try {
+      const data = await patientsApi.list(1);
+      setPatients(data.items);
+    } catch { /* non-critical */ }
+  }, []);
+
+  useEffect(() => { fetchReminders(); }, [fetchReminders]);
+  useEffect(() => { fetchStats(); fetchPatients(); }, [fetchStats, fetchPatients]);
+  useEffect(() => { setPage(1); }, [filter]);
+
+  const handleCreate = async () => {
+    if (!formData.patient_id || !formData.scheduled_at) {
+      setCreateError('Patient and scheduled time are required.');
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await remindersApi.create({
+        patient_id: formData.patient_id,
+        reminder_type: formData.reminder_type,
+        product_id: formData.product_id || undefined,
+        scheduled_at: formData.scheduled_at,
+        recurrence_rule: formData.recurrence_rule || undefined,
+        message_template: formData.message_template || undefined,
+      });
+      setShowCreateModal(false);
+      setFormData({ patient_id: '', reminder_type: 'refill', product_id: '', scheduled_at: '', recurrence_rule: '', message_template: '' });
+      fetchReminders();
+      fetchStats();
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create reminder');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const getPatientName = (id: string) => patients.find((p) => p.id === id)?.full_name || id;
+  const getPatientPhone = (id: string) => patients.find((p) => p.id === id)?.phone || '';
 
   const columns = [
     {
       key: 'patient',
       header: 'Patient',
-      render: (item: any) => (
+      render: (item: Reminder) => (
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
-            <span className="text-sm font-bold text-brand-700">{item.patient.charAt(0)}</span>
+            <span className="text-sm font-bold text-brand-700">{getPatientName(item.patient_id).charAt(0)}</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-surface-800">{item.patient}</p>
-            <p className="text-xs text-surface-400">{item.phone}</p>
+            <p className="text-sm font-semibold text-surface-800">{getPatientName(item.patient_id)}</p>
+            {getPatientPhone(item.patient_id) && <p className="text-xs text-surface-400">{getPatientPhone(item.patient_id)}</p>}
           </div>
         </div>
       ),
@@ -50,34 +125,34 @@ export default function RemindersPage() {
     {
       key: 'type',
       header: 'Type',
-      render: (item: any) => (
+      render: (item: Reminder) => (
         <span className="text-sm capitalize flex items-center gap-1.5">
-          {typeIcons[item.type]} {item.type.replace('_', ' ')}
+          {typeIcons[item.reminder_type]} {item.reminder_type.replace('_', ' ')}
         </span>
       ),
     },
     {
       key: 'product',
       header: 'Product',
-      render: (item: any) => <span className="text-sm text-surface-600">{item.product || '—'}</span>,
+      render: (item: Reminder) => <span className="text-sm text-surface-600">{item.product_id || '\u2014'}</span>,
     },
     {
       key: 'scheduled_at',
       header: 'Scheduled',
-      render: (item: any) => <span className="text-sm">{formatDateTime(item.scheduled_at)}</span>,
+      render: (item: Reminder) => <span className="text-sm">{formatDateTime(item.scheduled_at)}</span>,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (item: any) => <StatusBadge status={item.status} />,
+      render: (item: Reminder) => <StatusBadge status={item.status} />,
     },
     {
       key: 'response',
       header: 'Response',
-      render: (item: any) => item.response ? (
+      render: (item: Reminder) => item.response ? (
         <span className="badge bg-brand-100 text-brand-700">{item.response}</span>
       ) : (
-        <span className="text-xs text-surface-300">—</span>
+        <span className="text-xs text-surface-300">{'\u2014'}</span>
       ),
     },
   ];
@@ -93,18 +168,15 @@ export default function RemindersPage() {
           <StatCard label="Responded" value={respondedCount} icon={CheckCircle} color="brand" />
         </div>
 
+        {error && (
+          <div className="bg-danger-500/10 text-danger-600 px-4 py-3 rounded-xl text-sm font-medium">{error}</div>
+        )}
+
         <div className="card">
           <div className="px-5 py-4 border-b border-surface-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex gap-1 overflow-x-auto">
               {['all', 'pending', 'sent', 'delivered', 'responded', 'failed'].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setFilter(s)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors whitespace-nowrap',
-                    filter === s ? 'bg-brand-600 text-white' : 'text-surface-500 hover:bg-surface-100',
-                  )}
-                >
+                <button key={s} onClick={() => setFilter(s)} className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors whitespace-nowrap', filter === s ? 'bg-brand-600 text-white' : 'text-surface-500 hover:bg-surface-100')}>
                   {s === 'all' ? 'All' : s}
                 </button>
               ))}
@@ -114,25 +186,29 @@ export default function RemindersPage() {
             </button>
           </div>
 
-          <DataTable columns={columns} data={filtered} />
+          {loading ? <LoadingSpinner /> : (
+            <>
+              <DataTable columns={columns} data={reminders?.items || []} />
+              {reminders && <Pagination page={reminders.page} pages={reminders.pages} total={reminders.total} onPageChange={setPage} />}
+            </>
+          )}
         </div>
       </div>
 
       <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Schedule Reminder">
         <div className="space-y-4">
+          {createError && <div className="bg-danger-500/10 text-danger-600 px-4 py-3 rounded-xl text-sm font-medium">{createError}</div>}
           <div>
             <label className="label">Patient</label>
-            <select className="input">
-              <option>Select patient...</option>
-              <option>John Okafor - 08012345678</option>
-              <option>Mary Adebayo - 08098765432</option>
-              <option>Chioma Adeyemi - 08033445566</option>
+            <select className="input" value={formData.patient_id} onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}>
+              <option value="">Select patient...</option>
+              {patients.map((p) => (<option key={p.id} value={p.id}>{p.full_name} - {p.phone}</option>))}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Reminder Type</label>
-              <select className="input">
+              <select className="input" value={formData.reminder_type} onChange={(e) => setFormData({ ...formData, reminder_type: e.target.value as any })}>
                 <option value="refill">Refill</option>
                 <option value="adherence">Adherence</option>
                 <option value="follow_up">Follow Up</option>
@@ -140,18 +216,18 @@ export default function RemindersPage() {
               </select>
             </div>
             <div>
-              <label className="label">Product (optional)</label>
-              <input className="input" placeholder="e.g. Amlodipine 5mg" />
+              <label className="label">Product ID (optional)</label>
+              <input className="input" placeholder="e.g. product UUID" value={formData.product_id} onChange={(e) => setFormData({ ...formData, product_id: e.target.value })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Send Date & Time</label>
-              <input type="datetime-local" className="input" />
+              <input type="datetime-local" className="input" value={formData.scheduled_at} onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })} />
             </div>
             <div>
               <label className="label">Recurrence</label>
-              <select className="input">
+              <select className="input" value={formData.recurrence_rule} onChange={(e) => setFormData({ ...formData, recurrence_rule: e.target.value })}>
                 <option value="">One-time</option>
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
@@ -161,12 +237,12 @@ export default function RemindersPage() {
           </div>
           <div>
             <label className="label">Custom Message (optional)</label>
-            <textarea className="input" rows={3} placeholder="Leave blank to use default template" />
+            <textarea className="input" rows={3} placeholder="Leave blank to use default template" value={formData.message_template} onChange={(e) => setFormData({ ...formData, message_template: e.target.value })} />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={() => setShowCreateModal(false)} className="btn-secondary text-sm">Cancel</button>
-            <button className="btn-primary text-sm">
-              <Bell className="w-4 h-4" /> Schedule Reminder
+            <button onClick={handleCreate} disabled={creating} className="btn-primary text-sm">
+              {creating ? 'Scheduling...' : (<><Bell className="w-4 h-4" /> Schedule Reminder</>)}
             </button>
           </div>
         </div>

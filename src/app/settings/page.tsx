@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
-import { getStoredUser } from '@/lib/api';
+import { LoadingSpinner } from '@/components/ui';
 import { Building, User, Shield, Bell, Smartphone, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { orgApi, getStoredUser } from '@/lib/api';
+import type { Organization } from '@/types';
 
 const tabs = [
   { id: 'org', label: 'Organization', icon: Building },
@@ -17,6 +19,67 @@ const tabs = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('org');
   const user = getStoredUser();
+  const [org, setOrg] = useState<Organization | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  // Org form state
+  const [orgName, setOrgName] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+
+  useEffect(() => {
+    async function loadOrg() {
+      setLoading(true);
+      try {
+        const data = await orgApi.getMyOrg();
+        setOrg(data);
+        setOrgName(data.name || '');
+        setLicenseNumber(data.license_number || '');
+        setPhone(data.phone || '');
+        setEmail(data.email || '');
+        setAddress(data.address || '');
+        setCity(data.city || '');
+        setState(data.state || '');
+      } catch (err: any) {
+        setError(err.message || 'Failed to load organization data');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadOrg();
+  }, []);
+
+  const handleSaveOrg = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const updated = await orgApi.updateMyOrg({
+        name: orgName,
+        license_number: licenseNumber,
+        phone,
+        email,
+        address,
+        city,
+        state,
+      });
+      setOrg(updated);
+      setSuccess('Organization settings saved successfully.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (<><Header title="Settings" /><LoadingSpinner /></>);
 
   return (
     <>
@@ -32,7 +95,7 @@ export default function SettingsPage() {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => { setActiveTab(tab.id); setSuccess(''); setError(''); }}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
                       activeTab === tab.id
@@ -50,6 +113,17 @@ export default function SettingsPage() {
 
           {/* Content */}
           <div className="flex-1">
+            {success && (
+              <div className="mb-4 p-3 bg-brand-50 text-brand-700 text-sm font-medium rounded-xl border border-brand-200">
+                {success}
+              </div>
+            )}
+            {error && (
+              <div className="mb-4 p-3 bg-danger-500/10 text-danger-600 text-sm font-medium rounded-xl border border-danger-500/20">
+                {error}
+              </div>
+            )}
+
             {activeTab === 'org' && (
               <div className="card p-6 space-y-6">
                 <h3 className="text-lg font-bold text-surface-900">Organization Settings</h3>
@@ -57,36 +131,38 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Organization Name</label>
-                    <input className="input" defaultValue="HealthFirst Pharmacy" />
+                    <input className="input" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
                   </div>
                   <div>
                     <label className="label">License Number</label>
-                    <input className="input" defaultValue="PCN-2024-1234" />
+                    <input className="input" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
                   </div>
                   <div>
                     <label className="label">Phone</label>
-                    <input className="input" defaultValue="+234 801 234 5678" />
+                    <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </div>
                   <div>
                     <label className="label">Email</label>
-                    <input className="input" defaultValue="admin@healthfirst.ng" />
+                    <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                   <div className="md:col-span-2">
                     <label className="label">Address</label>
-                    <input className="input" defaultValue="15 Admiralty Way, Lekki Phase 1, Lagos" />
+                    <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
                   </div>
                   <div>
                     <label className="label">City</label>
-                    <input className="input" defaultValue="Lagos" />
+                    <input className="input" value={city} onChange={(e) => setCity(e.target.value)} />
                   </div>
                   <div>
                     <label className="label">State</label>
-                    <input className="input" defaultValue="Lagos" />
+                    <input className="input" value={state} onChange={(e) => setState(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="flex justify-end">
-                  <button className="btn-primary text-sm">Save Changes</button>
+                  <button onClick={handleSaveOrg} disabled={saving} className="btn-primary text-sm">
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
                 </div>
               </div>
             )}
@@ -182,7 +258,7 @@ export default function SettingsPage() {
                   {activeTab === 'team' ? <Shield className="w-8 h-8 text-surface-400" /> : <Bell className="w-8 h-8 text-surface-400" />}
                 </div>
                 <h3 className="font-bold text-surface-800 mb-1">{activeTab === 'team' ? 'Team Management' : 'Notification Preferences'}</h3>
-                <p className="text-sm text-surface-400">Configure from the Organization Users API endpoint.</p>
+                <p className="text-sm text-surface-400">Coming soon. Configure from the Organization Users API endpoint.</p>
               </div>
             )}
           </div>

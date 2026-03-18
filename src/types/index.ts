@@ -83,6 +83,8 @@ export interface Batch {
   expiry_date: string;
   received_date: string;
   supplier_org_id?: string;
+  cost_price?: number;
+  selling_price?: number;
   created_at: string;
 }
 

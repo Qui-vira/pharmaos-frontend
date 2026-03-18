@@ -2,17 +2,19 @@
 
 import { useState } from 'react';
 import Header from '@/components/layout/Header';
-import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Download, X } from 'lucide-react';
+import { Upload, CheckCircle, AlertTriangle, Download, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { uploadFile } from '@/lib/api';
 
-type UploadStatus = 'idle' | 'uploading' | 'processing' | 'complete' | 'error';
+type UploadStatus = 'idle' | 'uploading' | 'complete' | 'error';
 
 export default function DistributorUploadPage() {
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [fileName, setFileName] = useState('');
+  const [error, setError] = useState('');
   const [results, setResults] = useState<{ processed: number; added: number; updated: number; failed: number; errors: string[] } | null>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -22,37 +24,37 @@ export default function DistributorUploadPage() {
       'application/vnd.ms-excel',
     ];
     if (!validTypes.includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
-      alert('Please upload a CSV or XLSX file.');
+      setError('Please upload a CSV or XLSX file.');
+      setStatus('error');
       return;
     }
 
     setFileName(file.name);
     setStatus('uploading');
+    setError('');
+    setResults(null);
 
-    // Simulate upload + processing
-    setTimeout(() => {
-      setStatus('processing');
-      setTimeout(() => {
-        setStatus('complete');
-        setResults({
-          processed: 48,
-          added: 12,
-          updated: 33,
-          failed: 3,
-          errors: [
-            'Row 15: "Vitamin E 400IU" — Product not found in global catalog',
-            'Row 28: Missing unit_price column value',
-            'Row 41: "Chloroquine 250mg" — Product marked as controlled substance, needs admin approval',
-          ],
-        });
-      }, 2000);
-    }, 1500);
+    try {
+      const data = await uploadFile('/admin/import/supplier-catalog', file);
+      setStatus('complete');
+      setResults({
+        processed: data.processed || 0,
+        added: data.added || 0,
+        updated: data.updated || 0,
+        failed: data.failed || 0,
+        errors: data.errors || [],
+      });
+    } catch (err: any) {
+      setStatus('error');
+      setError(err.message || 'Upload failed. The import endpoint may not be available yet.');
+    }
   };
 
   const reset = () => {
     setStatus('idle');
     setFileName('');
     setResults(null);
+    setError('');
   };
 
   return (
@@ -106,19 +108,36 @@ export default function DistributorUploadPage() {
           </label>
         )}
 
-        {/* Uploading / Processing */}
-        {(status === 'uploading' || status === 'processing') && (
+        {/* Uploading */}
+        {status === 'uploading' && (
           <div className="card p-8 flex flex-col items-center">
             <div className="w-12 h-12 mb-4">
               <div className="w-12 h-12 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
             </div>
-            <p className="font-semibold text-surface-800">
-              {status === 'uploading' ? 'Uploading...' : 'Processing your catalog...'}
-            </p>
+            <p className="font-semibold text-surface-800">Uploading and processing...</p>
             <p className="text-sm text-surface-400 mt-1">{fileName}</p>
-            {status === 'processing' && (
-              <p className="text-xs text-surface-400 mt-3">Matching product names against global catalog and aliases...</p>
-            )}
+            <p className="text-xs text-surface-400 mt-3">Matching product names against global catalog and aliases...</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {status === 'error' && (
+          <div className="card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-danger-500/10 rounded-xl flex items-center justify-center">
+                <X className="w-5 h-5 text-danger-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-surface-900">Upload Failed</h3>
+                {fileName && <p className="text-sm text-surface-500">{fileName}</p>}
+              </div>
+            </div>
+            <div className="bg-danger-500/5 border border-danger-500/20 rounded-xl p-3 mb-4">
+              <p className="text-sm text-danger-700">{error}</p>
+            </div>
+            <button onClick={reset} className="btn-secondary text-sm">
+              <Upload className="w-4 h-4" /> Try Again
+            </button>
           </div>
         )}
 
@@ -149,19 +168,13 @@ export default function DistributorUploadPage() {
                   <p className="text-2xl font-extrabold text-blue-700">{results.updated}</p>
                   <p className="text-xs text-blue-600">Updated</p>
                 </div>
-                <div className={cn(
-                  'rounded-xl p-3 text-center',
-                  results.failed > 0 ? 'bg-danger-500/5' : 'bg-surface-50',
-                )}>
-                  <p className={cn('text-2xl font-extrabold', results.failed > 0 ? 'text-danger-600' : 'text-surface-400')}>
-                    {results.failed}
-                  </p>
+                <div className={cn('rounded-xl p-3 text-center', results.failed > 0 ? 'bg-danger-500/5' : 'bg-surface-50')}>
+                  <p className={cn('text-2xl font-extrabold', results.failed > 0 ? 'text-danger-600' : 'text-surface-400')}>{results.failed}</p>
                   <p className="text-xs text-surface-500">Failed</p>
                 </div>
               </div>
             </div>
 
-            {/* Errors */}
             {results.errors.length > 0 && (
               <div className="card p-5">
                 <div className="flex items-center gap-2 mb-3">

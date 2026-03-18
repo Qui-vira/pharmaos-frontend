@@ -6,13 +6,15 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, AlertTriangle, TrendingUp,
   ShoppingCart, Store, MessageSquare, Bell, Settings, LogOut,
-  ChevronLeft, Pill, Menu, Users, ClipboardList,
+  ChevronLeft, Pill, Menu, Users, ClipboardList, ShoppingBag,
+  Video, Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authApi, getStoredUser } from '@/lib/api';
 
 const pharmacyNav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/pos', label: 'POS', icon: ShoppingBag },
   { href: '/inventory', label: 'Inventory', icon: Package },
   { href: '/expiry', label: 'Expiry Alerts', icon: AlertTriangle },
   { href: '/sales', label: 'Sales & Analytics', icon: TrendingUp },
@@ -20,6 +22,8 @@ const pharmacyNav = [
   { href: '/suppliers', label: 'Supplier Catalog', icon: Store },
   { href: '/consultations', label: 'Consultations', icon: MessageSquare },
   { href: '/reminders', label: 'Reminders', icon: Bell },
+  { href: '/telepharmacy', label: 'Telepharmacy', icon: Video, badge: 'Soon' },
+  { href: '/snap-to-stock', label: 'Snap to Stock', icon: Camera, badge: 'Soon' },
 ];
 
 const distributorNav = [
@@ -85,7 +89,14 @@ export default function Sidebar() {
                 title={collapsed ? item.label : undefined}
               >
                 <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && (
+                  <>
+                    <span>{item.label}</span>
+                    {'badge' in item && item.badge && (
+                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wide bg-brand-100 text-brand-600 px-1.5 py-0.5 rounded-md">{item.badge}</span>
+                    )}
+                  </>
+                )}
               </Link>
             );
           })}

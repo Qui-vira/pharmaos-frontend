@@ -3,18 +3,208 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { LoadingSpinner } from '@/components/ui';
-import { Building, User, Shield, Bell, Smartphone, Key } from 'lucide-react';
+import { Building, User, Shield, Bell, Smartphone, Key, ShieldCheck, ShieldOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { orgApi, getStoredUser } from '@/lib/api';
+import { orgApi, authApi, getStoredUser } from '@/lib/api';
 import type { Organization } from '@/types';
 
 const tabs = [
   { id: 'org', label: 'Organization', icon: Building },
   { id: 'profile', label: 'My Profile', icon: User },
+  { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'team', label: 'Team', icon: Shield },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'integrations', label: 'Integrations', icon: Smartphone },
 ];
+
+function TwoFactorSection() {
+  const user = getStoredUser();
+  const [is2faEnabled, setIs2faEnabled] = useState(user?.two_factor_enabled || false);
+  const [setupMode, setSetupMode] = useState<'idle' | 'setup' | 'confirm' | 'disable'>('idle');
+  const [qrUrl, setQrUrl] = useState('');
+  const [secret, setSecret] = useState('');
+  const [code, setCode] = useState('');
+  const [loading2fa, setLoading2fa] = useState(false);
+  const [error2fa, setError2fa] = useState('');
+  const [success2fa, setSuccess2fa] = useState('');
+
+  const handleEnable = async () => {
+    setLoading2fa(true);
+    setError2fa('');
+    try {
+      const data = await authApi.enable2fa();
+      setQrUrl(data.qr_code_url);
+      setSecret(data.secret);
+      setSetupMode('confirm');
+    } catch (err: any) {
+      setError2fa(err.message || 'Failed to enable 2FA');
+    } finally {
+      setLoading2fa(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (code.length !== 6) return;
+    setLoading2fa(true);
+    setError2fa('');
+    try {
+      await authApi.confirm2fa(code);
+      setIs2faEnabled(true);
+      setSetupMode('idle');
+      setSuccess2fa('Two-factor authentication enabled successfully.');
+      setCode('');
+      // Update stored user
+      const stored = getStoredUser();
+      if (stored) {
+        stored.two_factor_enabled = true;
+        localStorage.setItem('pharmaos_user', JSON.stringify(stored));
+      }
+    } catch (err: any) {
+      setError2fa(err.message || 'Invalid code');
+      setCode('');
+    } finally {
+      setLoading2fa(false);
+    }
+  };
+
+  const handleDisable = async () => {
+    if (code.length !== 6) return;
+    setLoading2fa(true);
+    setError2fa('');
+    try {
+      await authApi.disable2fa(code);
+      setIs2faEnabled(false);
+      setSetupMode('idle');
+      setSuccess2fa('Two-factor authentication disabled.');
+      setCode('');
+      const stored = getStoredUser();
+      if (stored) {
+        stored.two_factor_enabled = false;
+        localStorage.setItem('pharmaos_user', JSON.stringify(stored));
+      }
+    } catch (err: any) {
+      setError2fa(err.message || 'Invalid code');
+      setCode('');
+    } finally {
+      setLoading2fa(false);
+    }
+  };
+
+  return (
+    <div className="card p-6 space-y-6">
+      <h3 className="text-lg font-bold text-surface-900">Two-Factor Authentication</h3>
+      <p className="text-sm text-surface-500">Add an extra layer of security to your account using an authenticator app like Google Authenticator or Authy.</p>
+
+      {success2fa && (
+        <div className="p-3 bg-brand-50 text-brand-700 text-sm font-medium rounded-xl border border-brand-200">
+          {success2fa}
+        </div>
+      )}
+      {error2fa && (
+        <div className="p-3 bg-danger-500/10 text-danger-600 text-sm font-medium rounded-xl border border-danger-500/20">
+          {error2fa}
+        </div>
+      )}
+
+      {setupMode === 'idle' && (
+        <div className="flex items-center justify-between p-4 bg-surface-50 rounded-xl">
+          <div className="flex items-center gap-3">
+            {is2faEnabled ? (
+              <ShieldCheck className="w-5 h-5 text-brand-600" />
+            ) : (
+              <ShieldOff className="w-5 h-5 text-surface-400" />
+            )}
+            <div>
+              <p className="font-semibold text-surface-800">
+                {is2faEnabled ? 'Two-factor authentication is enabled' : 'Two-factor authentication is disabled'}
+              </p>
+              <p className="text-xs text-surface-500">
+                {is2faEnabled ? 'Your account is protected with TOTP codes.' : 'Enable 2FA for enhanced security.'}
+              </p>
+            </div>
+          </div>
+          {is2faEnabled ? (
+            <button
+              onClick={() => { setSetupMode('disable'); setError2fa(''); setSuccess2fa(''); setCode(''); }}
+              className="btn-danger text-sm"
+            >
+              Disable
+            </button>
+          ) : (
+            <button
+              onClick={() => { handleEnable(); setSuccess2fa(''); }}
+              disabled={loading2fa}
+              className="btn-primary text-sm"
+            >
+              {loading2fa ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enable 2FA'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {setupMode === 'confirm' && (
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-surface-700">Scan this QR code with your authenticator app:</p>
+          <div className="flex justify-center p-4 bg-white rounded-xl border border-surface-200">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrUrl} alt="2FA QR Code" className="w-48 h-48" />
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-surface-500 mb-1">Or enter this key manually:</p>
+            <code className="text-sm font-mono bg-surface-100 px-3 py-1.5 rounded-lg select-all">{secret}</code>
+          </div>
+          <div>
+            <label className="label">Enter the 6-digit code to confirm</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              className="input text-center text-lg font-mono tracking-widest"
+              placeholder="000000"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => { setSetupMode('idle'); setCode(''); setError2fa(''); }} className="btn-secondary flex-1 text-sm">
+              Cancel
+            </button>
+            <button onClick={handleConfirm} disabled={code.length !== 6 || loading2fa} className="btn-primary flex-1 text-sm">
+              {loading2fa ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Enable'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {setupMode === 'disable' && (
+        <div className="space-y-4">
+          <p className="text-sm text-surface-700">Enter a code from your authenticator app to confirm disabling 2FA.</p>
+          <div>
+            <label className="label">6-digit code</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              className="input text-center text-lg font-mono tracking-widest"
+              placeholder="000000"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => { setSetupMode('idle'); setCode(''); setError2fa(''); }} className="btn-secondary flex-1 text-sm">
+              Cancel
+            </button>
+            <button onClick={handleDisable} disabled={code.length !== 6 || loading2fa} className="btn-danger flex-1 text-sm">
+              {loading2fa ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Disable 2FA'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('org');
@@ -216,6 +406,10 @@ export default function SettingsPage() {
                   <button className="btn-primary text-sm">Update Profile</button>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'security' && (
+              <TwoFactorSection />
             )}
 
             {activeTab === 'integrations' && (

@@ -22,7 +22,7 @@ import type {
   TokenResponse, User, Organization, Product, InventoryItem,
   LowStockItem, ExpiryAlert, Sale, SalesAnalytics, Order,
   SupplierProduct, Patient, Reminder, Consultation, Notification,
-  PaginatedResponse, Batch,
+  PaginatedResponse, Batch, LoginResponse, Enable2FAResponse,
 } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -116,18 +116,61 @@ export const authApi = {
     org_name: string; org_type: string; admin_email: string;
     admin_password: string; admin_full_name: string;
     phone?: string; address?: string; city?: string; state?: string; license_number?: string;
-  }): Promise<TokenResponse> {
-    const data = await request<TokenResponse>('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
-    setTokens(data.access_token, data.refresh_token);
-    setUser(data.user);
+  }): Promise<LoginResponse> {
+    const data = await request<LoginResponse>('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
+    if (data.access_token && data.refresh_token && data.user) {
+      setTokens(data.access_token, data.refresh_token);
+      setUser(data.user);
+    }
     return data;
   },
-  async login(email: string, password: string): Promise<TokenResponse> {
-    const data = await request<TokenResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-    setTokens(data.access_token, data.refresh_token);
-    setUser(data.user);
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const data = await request<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    if (data.access_token && data.refresh_token && data.user) {
+      setTokens(data.access_token, data.refresh_token);
+      setUser(data.user);
+    }
     return data;
   },
+  async verifyEmail(email: string, code: string): Promise<LoginResponse> {
+    const data = await request<LoginResponse>('/auth/verify-email', { method: 'POST', body: JSON.stringify({ email, code }) });
+    if (data.access_token && data.refresh_token && data.user) {
+      setTokens(data.access_token, data.refresh_token);
+      setUser(data.user);
+    }
+    return data;
+  },
+  resendCode: (email: string) =>
+    request<{ message: string }>('/auth/resend-code', { method: 'POST', body: JSON.stringify({ email }) }),
+  async googleAuth(id_token: string, org_type?: string, org_name?: string): Promise<LoginResponse> {
+    const data = await request<LoginResponse>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ id_token, org_type: org_type || 'pharmacy', org_name }),
+    });
+    if (data.access_token && data.refresh_token && data.user) {
+      setTokens(data.access_token, data.refresh_token);
+      setUser(data.user);
+    }
+    return data;
+  },
+  sendPhoneOtp: (phone: string) =>
+    request<{ message: string }>('/auth/send-phone-otp', { method: 'POST', body: JSON.stringify({ phone }) }),
+  async verifyPhone(phone: string, code: string): Promise<{ message: string }> {
+    return request<{ message: string }>('/auth/verify-phone', { method: 'POST', body: JSON.stringify({ phone, code }) });
+  },
+  enable2fa: () => request<Enable2FAResponse>('/auth/enable-2fa', { method: 'POST' }),
+  confirm2fa: (code: string) =>
+    request<{ message: string }>('/auth/confirm-2fa', { method: 'POST', body: JSON.stringify({ code }) }),
+  async verify2fa(code: string, temp_token: string): Promise<LoginResponse> {
+    const data = await request<LoginResponse>('/auth/verify-2fa', { method: 'POST', body: JSON.stringify({ code, temp_token }) });
+    if (data.access_token && data.refresh_token && data.user) {
+      setTokens(data.access_token, data.refresh_token);
+      setUser(data.user);
+    }
+    return data;
+  },
+  disable2fa: (code: string) =>
+    request<{ message: string }>('/auth/disable-2fa', { method: 'POST', body: JSON.stringify({ code }) }),
   logout() { clearTokens(); if (typeof window !== 'undefined') window.location.href = '/login'; },
   getMe: () => request<User>('/auth/me'),
 };

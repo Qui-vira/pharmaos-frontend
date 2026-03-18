@@ -27,6 +27,10 @@ export interface User {
   role: UserRole;
   phone?: string;
   is_active: boolean;
+  is_verified?: boolean;
+  phone_verified?: boolean;
+  two_factor_enabled?: boolean;
+  avatar_url?: string;
   last_login?: string;
   created_at: string;
 }
@@ -246,4 +250,22 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
   user: User;
+}
+
+export interface LoginResponse {
+  access_token?: string;
+  refresh_token?: string;
+  token_type: string;
+  user?: User;
+  requires_verification: boolean;
+  requires_2fa: boolean;
+  temp_token?: string;
+  message?: string;
+  email?: string;
+}
+
+export interface Enable2FAResponse {
+  secret: string;
+  otpauth_uri: string;
+  qr_code_url: string;
 }

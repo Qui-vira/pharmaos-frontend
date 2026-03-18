@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Package, AlertTriangle, TrendingUp,
+  LayoutDashboard, Package, AlertTriangle, TrendingUp, BarChart3,
   ShoppingCart, Store, MessageSquare, Bell, Settings, LogOut,
   ChevronLeft, Pill, Menu, Users, ClipboardList, ShoppingBag,
   Video, Camera,
@@ -21,6 +21,7 @@ const pharmacyNav: NavItem[] = [
   { href: '/inventory', label: 'Inventory', icon: Package },
   { href: '/expiry', label: 'Expiry Alerts', icon: AlertTriangle },
   { href: '/sales', label: 'Sales & Analytics', icon: TrendingUp },
+  { href: '/analytics', label: 'Predictions', icon: BarChart3 },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/suppliers', label: 'Supplier Catalog', icon: Store },
   { href: '/consultations', label: 'Consultations', icon: MessageSquare },

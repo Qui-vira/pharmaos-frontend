@@ -348,6 +348,21 @@ export const notificationsApi = {
   markAllRead: () => request<void>('/notifications/read-all', { method: 'PUT' }),
 };
 
+// ─── Predictive Analytics ──────────────────────────────────────────────────
+
+export const analyticsApi = {
+  demandForecast: (days = 30) =>
+    request<any[]>(`/analytics/demand-forecast?days=${days}`),
+  reorderPredictions: () =>
+    request<any[]>('/analytics/reorder-predictions'),
+  revenueForecast: (months = 3) =>
+    request<any>(`/analytics/revenue-forecast?months=${months}`),
+  expiryRisk: () =>
+    request<any[]>('/analytics/expiry-risk'),
+  summary: () =>
+    request<any>('/analytics/summary'),
+};
+
 // ─── Voice Calls ───────────────────────────────────────────────────────────
 
 export const voiceApi = {

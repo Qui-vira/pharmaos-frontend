@@ -11,8 +11,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authApi, getStoredUser } from '@/lib/api';
+import type { LucideIcon } from 'lucide-react';
 
-const pharmacyNav = [
+type NavItem = { href: string; label: string; icon: LucideIcon; badge?: string };
+
+const pharmacyNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pos', label: 'POS', icon: ShoppingBag },
   { href: '/inventory', label: 'Inventory', icon: Package },
@@ -26,7 +29,7 @@ const pharmacyNav = [
   { href: '/snap-to-stock', label: 'Snap to Stock', icon: Camera, badge: 'Soon' },
 ];
 
-const distributorNav = [
+const distributorNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/inventory', label: 'My Catalog', icon: Package },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
@@ -92,8 +95,8 @@ export default function Sidebar() {
                 {!collapsed && (
                   <>
                     <span>{item.label}</span>
-                    {'badge' in item && item.badge && (
-                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wide bg-brand-100 text-brand-600 px-1.5 py-0.5 rounded-md">{item.badge}</span>
+                    {item.badge && (
+                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wide bg-brand-100 text-brand-600 px-1.5 py-0.5 rounded-md">{item.badge as string}</span>
                     )}
                   </>
                 )}

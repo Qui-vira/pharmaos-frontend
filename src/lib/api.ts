@@ -23,6 +23,7 @@ import type {
   LowStockItem, ExpiryAlert, Sale, SalesAnalytics, Order,
   SupplierProduct, Patient, Reminder, Consultation, Notification,
   PaginatedResponse, Batch, LoginResponse, Enable2FAResponse,
+  TelepharmacySession, TelepharmacyStats, MatchedProduct, SnapConfirmItem,
 } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -173,6 +174,10 @@ export const authApi = {
     request<{ message: string }>('/auth/disable-2fa', { method: 'POST', body: JSON.stringify({ code }) }),
   logout() { clearTokens(); if (typeof window !== 'undefined') window.location.href = '/login'; },
   getMe: () => request<User>('/auth/me'),
+  updateProfile: (data: { full_name?: string; phone?: string }) =>
+    request<User>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  changePassword: (current_password: string, new_password: string) =>
+    request<{ message: string }>('/auth/password', { method: 'PUT', body: JSON.stringify({ current_password, new_password }) }),
 };
 
 // ─── Organizations ─────────────────────────────────────────────────────────
@@ -395,6 +400,36 @@ export const adminApi = {
   listOrgs: (page = 1) => request<any>(`/admin/organizations?page=${page}`),
   analytics: () => request<any>('/admin/analytics'),
   auditLogs: (page = 1) => request<any>(`/admin/audit-logs?page=${page}`),
+};
+
+// ─── Telepharmacy ─────────────────────────────────────────────────────────
+
+export const telepharmacyApi = {
+  createSession: (data: { patient_id: string; pharmacist_id?: string; session_type?: string; notes?: string; consultation_id?: string }) =>
+    request<TelepharmacySession>('/telepharmacy/sessions', { method: 'POST', body: JSON.stringify(data) }),
+  listSessions: (page = 1, status?: string) => {
+    let url = `/telepharmacy/sessions?page=${page}`;
+    if (status) url += `&status=${status}`;
+    return request<PaginatedResponse<TelepharmacySession>>(url);
+  },
+  getSession: (id: string) => request<TelepharmacySession>(`/telepharmacy/sessions/${id}`),
+  updateStatus: (id: string, status: string) =>
+    request<TelepharmacySession>(`/telepharmacy/sessions/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  enterPrescription: (id: string, data: { diagnosis: string; drug_plan: any[]; total_price: number; notes?: string }) =>
+    request<TelepharmacySession>(`/telepharmacy/sessions/${id}/prescription`, { method: 'POST', body: JSON.stringify(data) }),
+  getRecording: (id: string) => request<{ recording_url: string }>(`/telepharmacy/sessions/${id}/recording`),
+  getStats: () => request<TelepharmacyStats>('/telepharmacy/stats'),
+};
+
+// ─── Snap to Stock ────────────────────────────────────────────────────────
+
+export const snapToStockApi = {
+  analyze: (image_base64: string, mime_type = 'image/jpeg') =>
+    request<{ products: any[] }>('/snap-to-stock/analyze', { method: 'POST', body: JSON.stringify({ image_base64, mime_type }) }),
+  match: (product_names: string[]) =>
+    request<{ matches: MatchedProduct[] }>('/snap-to-stock/match', { method: 'POST', body: JSON.stringify({ product_names }) }),
+  confirm: (items: SnapConfirmItem[]) =>
+    request<{ added: number; updated: number; errors: string[] }>('/snap-to-stock/confirm', { method: 'POST', body: JSON.stringify({ items }) }),
 };
 
 // ─── File Upload Helper ────────────────────────────────────────────────────

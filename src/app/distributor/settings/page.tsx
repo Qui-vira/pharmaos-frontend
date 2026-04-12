@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { LoadingSpinner } from '@/components/ui';
 import { Building, User, Key } from 'lucide-react';
-import { orgApi, getStoredUser } from '@/lib/api';
+import { orgApi, authApi, getStoredUser } from '@/lib/api';
 import type { Organization } from '@/types';
 
 export default function DistributorSettingsPage() {
@@ -19,6 +19,17 @@ export default function DistributorSettingsPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+
+  // Profile form state
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Password form state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     async function loadOrg() {
@@ -37,6 +48,10 @@ export default function DistributorSettingsPage() {
       }
     }
     loadOrg();
+    if (user) {
+      setProfileName(user.full_name || '');
+      setProfilePhone(user.phone || '');
+    }
   }, []);
 
   const handleSave = async () => {
@@ -56,6 +71,54 @@ export default function DistributorSettingsPage() {
       setError(err.message || 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    setError('');
+    setSuccess('');
+    try {
+      const updated = await authApi.updateProfile({
+        full_name: profileName || undefined,
+        phone: profilePhone || undefined,
+      });
+      const stored = getStoredUser();
+      if (stored) {
+        stored.full_name = updated.full_name;
+        stored.phone = updated.phone || undefined;
+        localStorage.setItem('pharmaos_user', JSON.stringify(stored));
+      }
+      setSuccess('Profile updated successfully.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setError('');
+    setSuccess('');
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters.');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      setSuccess('Password changed successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to change password');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -129,12 +192,18 @@ export default function DistributorSettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="label">Full Name</label>
-              <input className="input" defaultValue={user?.full_name} />
+              <input className="input" value={profileName} onChange={(e) => setProfileName(e.target.value)} />
             </div>
             <div>
               <label className="label">Phone</label>
-              <input className="input" defaultValue={user?.phone || ''} />
+              <input className="input" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
             </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={handleSaveProfile} disabled={savingProfile} className="btn-primary text-sm" style={{ background: '#2563eb' }}>
+              {savingProfile ? 'Saving...' : 'Update Profile'}
+            </button>
           </div>
 
           <hr className="border-surface-200" />
@@ -142,17 +211,29 @@ export default function DistributorSettingsPage() {
           <h4 className="font-semibold text-surface-800 flex items-center gap-2"><Key className="w-4 h-4" /> Change Password</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <label className="label">Current Password</label>
+              <input type="password" className="input" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            </div>
+            <div />
+            <div>
               <label className="label">New Password</label>
-              <input type="password" className="input" />
+              <input type="password" className="input" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </div>
             <div>
               <label className="label">Confirm Password</label>
-              <input type="password" className="input" />
+              <input type="password" className="input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             </div>
           </div>
 
           <div className="flex justify-end">
-            <button className="btn-primary text-sm" style={{ background: '#2563eb' }}>Update Profile</button>
+            <button
+              onClick={handleChangePassword}
+              disabled={savingPassword || !currentPassword || !newPassword}
+              className="btn-primary text-sm"
+              style={{ background: '#2563eb' }}
+            >
+              {savingPassword ? 'Changing...' : 'Change Password'}
+            </button>
           </div>
         </div>
       </div>

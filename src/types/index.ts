@@ -269,3 +269,66 @@ export interface Enable2FAResponse {
   otpauth_uri: string;
   qr_code_url: string;
 }
+
+// ─── Telepharmacy ────────────────────────────────────────────────────────
+
+export type TelepharmacySessionType = 'video' | 'voice' | 'chat';
+export type TelepharmacyStatusType = 'waiting' | 'ringing' | 'active' | 'completed' | 'cancelled';
+
+export interface TelepharmacySession {
+  id: string;
+  org_id: string;
+  patient_id: string;
+  pharmacist_id?: string;
+  session_type: TelepharmacySessionType;
+  status: TelepharmacyStatusType;
+  started_at?: string;
+  ended_at?: string;
+  duration_seconds?: number;
+  recording_url?: string;
+  notes?: string;
+  prescription?: {
+    diagnosis: string;
+    drug_plan: { product_name: string; dosage: string; quantity: number; unit_price: number; instructions?: string }[];
+    total_price: string;
+    notes?: string;
+  };
+  consultation_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TelepharmacyStats {
+  total_sessions: number;
+  sessions_today: number;
+  avg_duration_seconds: number;
+  active_sessions: number;
+}
+
+// ─── Snap to Stock ───────────────────────────────────────────────────────
+
+export interface ExtractedProduct {
+  product_name: string;
+  strength?: string;
+  manufacturer?: string;
+  batch_number?: string;
+  expiry_date?: string;
+}
+
+export interface MatchedProduct {
+  extracted_name: string;
+  matched_product_id?: string;
+  matched_product_name?: string;
+  generic_name?: string;
+  strength?: string;
+  manufacturer?: string;
+  confidence: 'high' | 'medium' | 'none';
+  alternatives: { product_id: string; name: string; generic_name: string; strength?: string }[];
+}
+
+export interface SnapConfirmItem {
+  product_id: string;
+  quantity: number;
+  cost_price?: number;
+  selling_price?: number;
+}

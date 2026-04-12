@@ -91,7 +91,19 @@ export default function DistributorUploadPage() {
             </div>
           </div>
 
-          <button className="btn-secondary text-sm">
+          <button
+            className="btn-secondary text-sm"
+            onClick={() => {
+              const csv = 'product_name,unit_price,quantity,manufacturer\nParacetamol 500mg Tablets,150,100,Emzor Pharmaceuticals\nAmoxicillin 250mg Capsules,350,50,Fidson Healthcare\n';
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'pharmaos_catalog_template.csv';
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
             <Download className="w-4 h-4" /> Download Template CSV
           </button>
         </div>

@@ -53,7 +53,6 @@ function TwoFactorSection() {
       setSetupMode('idle');
       setSuccess2fa('Two-factor authentication enabled successfully.');
       setCode('');
-      // Update stored user
       const stored = getStoredUser();
       if (stored) {
         stored.two_factor_enabled = true;
@@ -224,6 +223,17 @@ export default function SettingsPage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
 
+  // Profile form state
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Password form state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
   useEffect(() => {
     async function loadOrg() {
       setLoading(true);
@@ -244,6 +254,11 @@ export default function SettingsPage() {
       }
     }
     loadOrg();
+    // Init profile fields from stored user
+    if (user) {
+      setProfileName(user.full_name || '');
+      setProfilePhone(user.phone || '');
+    }
   }, []);
 
   const handleSaveOrg = async () => {
@@ -266,6 +281,55 @@ export default function SettingsPage() {
       setError(err.message || 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    setError('');
+    setSuccess('');
+    try {
+      const updated = await authApi.updateProfile({
+        full_name: profileName || undefined,
+        phone: profilePhone || undefined,
+      });
+      // Update local storage
+      const stored = getStoredUser();
+      if (stored) {
+        stored.full_name = updated.full_name;
+        stored.phone = updated.phone || undefined;
+        localStorage.setItem('pharmaos_user', JSON.stringify(stored));
+      }
+      setSuccess('Profile updated successfully.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setError('');
+    setSuccess('');
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters.');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      setSuccess('Password changed successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to change password');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -375,12 +439,18 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Full Name</label>
-                    <input className="input" defaultValue={user?.full_name} />
+                    <input className="input" value={profileName} onChange={(e) => setProfileName(e.target.value)} />
                   </div>
                   <div>
                     <label className="label">Phone</label>
-                    <input className="input" defaultValue={user?.phone || ''} />
+                    <input className="input" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
                   </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button onClick={handleSaveProfile} disabled={savingProfile} className="btn-primary text-sm">
+                    {savingProfile ? 'Saving...' : 'Update Profile'}
+                  </button>
                 </div>
 
                 <hr className="border-surface-200" />
@@ -389,21 +459,27 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Current Password</label>
-                    <input type="password" className="input" />
+                    <input type="password" className="input" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
                   </div>
                   <div />
                   <div>
                     <label className="label">New Password</label>
-                    <input type="password" className="input" />
+                    <input type="password" className="input" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                   </div>
                   <div>
                     <label className="label">Confirm Password</label>
-                    <input type="password" className="input" />
+                    <input type="password" className="input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="flex justify-end">
-                  <button className="btn-primary text-sm">Update Profile</button>
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={savingPassword || !currentPassword || !newPassword}
+                    className="btn-primary text-sm"
+                  >
+                    {savingPassword ? 'Changing...' : 'Change Password'}
+                  </button>
                 </div>
               </div>
             )}

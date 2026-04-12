@@ -28,8 +28,8 @@ const pharmacyNav: NavItem[] = [
   { href: '/reminders', label: 'Reminders', icon: Bell },
   { href: '/patients', label: 'Patients', icon: Users },
   { href: '/share', label: 'Patient QR', icon: QrCode },
-  { href: '/telepharmacy', label: 'Telepharmacy', icon: Video, badge: 'Soon' },
-  { href: '/snap-to-stock', label: 'Snap to Stock', icon: Camera, badge: 'Soon' },
+  { href: '/telepharmacy', label: 'Telepharmacy', icon: Video },
+  { href: '/snap-to-stock', label: 'Snap to Stock', icon: Camera },
 ];
 
 const distributorNav: NavItem[] = [

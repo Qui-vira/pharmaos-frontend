@@ -657,38 +657,6 @@ function LoginPageInner() {
               config={NIGERIA_GLOBE_CONFIG}
             />
 
-            {/* Floating stat card — top left */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.6 }}
-              className="absolute -top-4 -left-8 z-20 bg-white/[0.06] backdrop-blur-xl border border-white/[0.08] rounded-2xl px-4 py-3 shadow-2xl"
-            >
-              <div className="text-2xl font-extrabold text-brand-400">500+</div>
-              <div className="text-xs text-surface-400">Pharmacies</div>
-            </motion.div>
-
-            {/* Floating stat card — top right */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0, duration: 0.6 }}
-              className="absolute -top-2 -right-10 z-20 bg-white/[0.06] backdrop-blur-xl border border-white/[0.08] rounded-2xl px-4 py-3 shadow-2xl"
-            >
-              <div className="text-2xl font-extrabold text-brand-400">50k+</div>
-              <div className="text-xs text-surface-400">Orders/month</div>
-            </motion.div>
-
-            {/* Floating stat card — bottom center */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.2, duration: 0.6 }}
-              className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-20 bg-white/[0.06] backdrop-blur-xl border border-white/[0.08] rounded-2xl px-4 py-3 shadow-2xl"
-            >
-              <div className="text-2xl font-extrabold text-emerald-400">99.9%</div>
-              <div className="text-xs text-surface-400">Uptime</div>
-            </motion.div>
           </div>
         </div>
 

@@ -698,7 +698,7 @@ function LoginPageInner() {
             Intelligent pharmacy<br />management, simplified.
           </h2>
           <p className="text-surface-400 text-base leading-relaxed max-w-md">
-            AI-powered inventory, smart ordering, patient reminders, and real-time analytics — built for Nigerian pharmacies.
+            AI-powered inventory, smart ordering, patient reminders, and real-time analytics - built for Nigerian pharmacies.
           </p>
         </div>
       </div>

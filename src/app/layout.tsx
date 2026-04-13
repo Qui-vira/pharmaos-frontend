@@ -4,7 +4,7 @@ import { ToastProvider } from '@/components/ui/Toast';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'PharmaOS AI — Dashboard',
+  title: 'PharmaOS AI - Dashboard',
   description: 'AI-powered pharmacy management platform',
   icons: {
     icon: [

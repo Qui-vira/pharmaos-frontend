@@ -499,7 +499,7 @@ function ReviewStep({
                       <span className="text-xs text-surface-600 dark:text-surface-400">
                         Matched: <strong className="text-surface-800 dark:text-surface-200">{item.matched_product_name}</strong>
                         {item.strength && <> ({item.strength})</>}
-                        {item.manufacturer && <> — {item.manufacturer}</>}
+                        {item.manufacturer && <> - {item.manufacturer}</>}
                       </span>
                     </div>
                   ) : (

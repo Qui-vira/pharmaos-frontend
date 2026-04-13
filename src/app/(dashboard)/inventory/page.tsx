@@ -480,7 +480,7 @@ export default function InventoryPage() {
       </Modal>
 
       {/* ═══ RESTOCK MODAL ═══ */}
-      <Modal open={showRestock} onClose={() => { setShowRestock(false); setErr(''); }} title={`Restock — ${restockProduct?.product?.name || 'Product'}`}>
+      <Modal open={showRestock} onClose={() => { setShowRestock(false); setErr(''); }} title={`Restock - ${restockProduct?.product?.name || 'Product'}`}>
         {err && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}

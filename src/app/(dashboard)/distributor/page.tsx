@@ -124,7 +124,7 @@ export default function DistributorDashboard() {
               </div>
               <p className="text-2xl font-extrabold text-surface-900 dark:text-surface-50">
                 {stat.isCurrency
-                  ? (stat.value !== null ? formatCurrency(stat.value as number) : '—')
+                  ? (stat.value !== null ? formatCurrency(stat.value as number) : '-')
                   : <AnimatedCounter value={stat.value as number} />
                 }
               </p>

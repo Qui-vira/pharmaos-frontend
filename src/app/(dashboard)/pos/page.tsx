@@ -627,7 +627,7 @@ export default function POSPage() {
                   ) : (
                     <>
                       <Sparkles className="w-4.5 h-4.5" />
-                      Complete Sale — {formatCurrency(cartTotal)}
+                      Complete Sale - {formatCurrency(cartTotal)}
                     </>
                   )}
                 </motion.button>

@@ -30,3 +30,6 @@ export { Tooltip } from './Tooltip';
 export { SkeletonLine, SkeletonCard, SkeletonTable } from './Skeleton';
 export { Stepper } from './Stepper';
 export { ToastProvider, useToast } from './Toast';
+
+// Phase 5 — Glass & animation components
+export { default as GlassCard } from './GlassCard';

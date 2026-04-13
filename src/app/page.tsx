@@ -13,7 +13,7 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-50">
+    <div className="min-h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-950">
       <div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );

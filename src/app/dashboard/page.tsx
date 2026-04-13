@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import Header from '@/components/layout/Header';
 import { StatusBadge, LoadingSpinner } from '@/components/ui';
 import { NumberTicker } from '@/components/shadcn/number-ticker';
-import { ShineBorder } from '@/components/shadcn/shine-border';
 import {
   Package, TrendingUp, ShoppingCart, AlertTriangle,
   MessageSquare, ArrowUpRight, Clock, Activity, Sparkles,
@@ -108,51 +107,38 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 p-6 text-white shadow-lg shadow-brand-600/20"
         >
-          <ShineBorder
-            borderRadius={16}
-            borderWidth={1.5}
-            duration={10}
-            color={['#0d9e4a', '#3b82f6']}
-            className="w-full min-w-0 relative overflow-hidden"
-          >
-            {/* Mesh gradient background */}
-            <div
-              className="absolute inset-0 opacity-90"
-              style={{
-                background: 'radial-gradient(ellipse at 20% 50%, rgba(13,158,74,0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.1) 0%, transparent 50%), radial-gradient(ellipse at 50% 80%, rgba(13,158,74,0.08) 0%, transparent 50%)',
-              }}
-            />
-            <div className="relative z-10 p-5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <motion.div
-                  className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/25"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <Activity className="w-6 h-6 text-white" />
-                </motion.div>
-                <div>
-                  <h2 className="text-xl font-extrabold tracking-tight text-surface-900 flex items-center gap-2">
-                    Good {greeting}, {firstName}
-                    <motion.span
-                      animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
-                      transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
-                      className="inline-block origin-bottom-right"
-                    >
-                      <Sparkles className="w-5 h-5 text-warning-500" />
-                    </motion.span>
-                  </h2>
-                  <p className="text-surface-500 mt-0.5 text-sm">Here&apos;s what&apos;s happening with your pharmacy today.</p>
-                </div>
-              </div>
-              <div className="hidden sm:block text-right">
-                <div className="text-sm font-medium text-surface-500">
-                  {new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'long', day: 'numeric' })}
-                </div>
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <motion.div
+                className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <Activity className="w-6 h-6 text-white" />
+              </motion.div>
+              <div>
+                <h2 className="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                  Good {greeting}, {firstName}
+                  <motion.span
+                    animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
+                    transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
+                    className="inline-block origin-bottom-right"
+                  >
+                    <Sparkles className="w-5 h-5 text-brand-200" />
+                  </motion.span>
+                </h2>
+                <p className="text-brand-100 mt-0.5 text-sm">Here&apos;s what&apos;s happening with your pharmacy today.</p>
               </div>
             </div>
-          </ShineBorder>
+            <div className="hidden sm:block text-right">
+              <div className="text-sm font-medium text-brand-200">
+                {new Date().toLocaleDateString('en-NG', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* ─── KPI Stats ──────────────────────────────────────────────── */}

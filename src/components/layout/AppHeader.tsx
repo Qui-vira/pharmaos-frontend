@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import {
@@ -34,7 +35,32 @@ const dropdownVariants = {
   exit: { opacity: 0, scale: 0.95, y: -4, transition: { duration: 0.1, ease: 'easeIn' as const } },
 };
 
-export default function AppHeader({ title }: { title: string }) {
+const pageTitles: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/pos': 'Point of Sale',
+  '/inventory': 'Inventory',
+  '/expiry': 'Expiry Alerts',
+  '/sales': 'Sales & Analytics',
+  '/analytics': 'Predictions',
+  '/orders': 'Orders',
+  '/suppliers': 'Supplier Catalog',
+  '/consultations': 'Consultations',
+  '/reminders': 'Reminders',
+  '/patients': 'Patients',
+  '/share': 'Patient QR',
+  '/telepharmacy': 'Telepharmacy',
+  '/snap-to-stock': 'Snap to Stock',
+  '/settings': 'Settings',
+  '/distributor': 'Distributor Dashboard',
+  '/distributor/catalog': 'My Catalog',
+  '/distributor/orders': 'Incoming Orders',
+  '/distributor/upload': 'Upload Products',
+  '/distributor/settings': 'Settings',
+};
+
+export default function AppHeader() {
+  const pathname = usePathname();
+  const title = pageTitles[pathname] || 'PharmaOS';
   const user = getStoredUser();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);

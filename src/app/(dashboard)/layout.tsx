@@ -32,6 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
       <AppSidebar />
       <main className="lg:ml-[72px] min-h-screen transition-all duration-300">
+        <AppHeader />
         <PageTransition>{children}</PageTransition>
       </main>
     </div>

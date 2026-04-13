@@ -243,19 +243,6 @@ export default function AppSidebar() {
 
   return (
     <>
-      {/* ── Mobile hamburger button ─────────────────────────────────────── */}
-      <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-surface-900 rounded-xl shadow-elevated border border-surface-200 dark:border-surface-700"
-        onClick={toggleMobile}
-        aria-label="Toggle sidebar"
-      >
-        {mobileOpen ? (
-          <X className="w-5 h-5 text-surface-600 dark:text-surface-300" />
-        ) : (
-          <Menu className="w-5 h-5 text-surface-600 dark:text-surface-300" />
-        )}
-      </button>
-
       {/* ── Desktop sidebar (hover-to-expand) ───────────────────────────── */}
       <motion.aside
         className="hidden lg:flex fixed top-0 left-0 z-40 h-screen bg-white dark:bg-surface-900 border-r border-surface-200 dark:border-surface-800 flex-col overflow-hidden"
